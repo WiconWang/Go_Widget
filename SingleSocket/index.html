@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+
+<script src="http://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js"></script>
+<body>
+
+
+<input type="button" onclick="StartWs()" value="连接服务器">
+<br>
+<input type="text" id="info" value="messsage">
+<input type="button" onclick="SendData()" value="发送">
+<br>
+<input type="button" onclick="seestate()" value="查看状态">
+
+<div id="msg"></div>
+<script>
+    var ws;
+
+    function StartWs() {
+
+        try {
+
+            ws = new WebSocket("ws://localhost:20181/chat");//连接服务器
+
+            ws.onopen = function(event){$('#msg').append("<hr>onopen 已经与服务器建立了连接<br>当前连接状态："+this.readyState);};
+
+            ws.onmessage = function(event){$('#msg').append("<hr>onmessage 接收到服务器发送的数据：<br>"+event.data);};
+
+            ws.onclose = function(event){$('#msg').append("<hr>onclose 已经与服务器断开连接<br>当前连接状态："+this.readyState);};
+
+            ws.onerror = function(event){$('#msg').append("<hr>onerror WebSocket异常！");};
+
+        }catch(ex) {
+
+            $('#msg').append(ex.message);
+
+        }
+
+    };
+
+    function SendData() {
+
+        try{
+
+            ws.send($('#info').val());
+
+        }catch(ex){
+
+            $('#msg').append("<hr>"+ ex.message);
+
+        }
+
+    };
+
+    function seestate(){
+
+        $('#msg').append("<hr>"+ ws.readyState);
+
+    }
+</script>
+
+</body>
+</html>
