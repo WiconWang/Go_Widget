@@ -4,12 +4,16 @@ package main
 //服务器接收数据并处理
 //然后发送回用户
 
+//流程
+// 客户 -->  WS连接 --> messageChannel   服务器可以对此队列做处理
+// 客户 <-- WS连接 <-- messageChannel
+
 
 import (
 	"fmt"
 	"net/http"
 	"github.com/gorilla/websocket"
-	"socket/SingleSocket/impl"
+	"./impl"
 )
 
 var wsUpgrade = websocket.Upgrader{
@@ -39,18 +43,19 @@ func wsHandler(resp http.ResponseWriter, req *http.Request) {
 		err error
 	)
 	if wsConn,err = wsUpgrade.Upgrade(resp, req, nil); err != nil {
+		fmt.Println("升级为WebSockets失败")
 		return
 	}
 	if conn,err = impl.InitConnection(wsConn); err != nil {
-		goto ERR
+		fmt.Println("初始化连接出错")
+		conn.Close()
+		return
 	}
+	fmt.Println("--结束-")
 
-	fmt.Println(conn)
-
-ERR:
-	conn.Close()
-		//关闭
 
 }
+
+
 
 

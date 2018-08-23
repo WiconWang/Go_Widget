@@ -6,10 +6,6 @@ import (
 )
 
 
-//流程
-// 客户 -->  WS连接 --> messageChannel   服务器可以对此队列做处理
-// 客户 <-- WS连接 <-- messageChannel
-
 
 type Connnection struct{
 	// 声明ws
@@ -58,7 +54,7 @@ func (conn *Connnection) Loop()  {
 		}
 
 		//对接收数据做处理
-		info = "xxx" + string(data)
+		info = "Your Msg : " + string(data)
 
 		//发送回ws
 		if err = conn.wsConn.WriteMessage(websocket.TextMessage,[]byte(info)); err != nil {
@@ -67,6 +63,7 @@ func (conn *Connnection) Loop()  {
 
 	}
 	ERR:
+		fmt.Println("循环出错")
 		conn.Close()
 }
 
