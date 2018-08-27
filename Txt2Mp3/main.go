@@ -14,13 +14,15 @@ import (
 	"crypto/md5"
 	"net/http"
 	"strconv"
+	mahonia "github.com/axgle/mahonia"
+	"runtime"
 )
 
 func main() {
 	const URL = "http://api.xfyun.cn/v1/service/v1/tts"
 	const AUE = "lame"
-	const APP_ID = "5b77e2bf"
-	const API_KEY = "bc0736a9a9a6ca740c1311bf43821c4c"
+	const APP_ID = "5b77e2bfc"
+	const API_KEY = "bc0736a9a9a6ca740c1311bf43821c4cc"
 	//# 硬盘路径(原视频存放路径)
 	const SOURCE_PATH = "txt"
 	////# 切割后的视频存放路径
@@ -126,8 +128,12 @@ func sendPost(url,aue,appId,appKey,myIP,content string) (body []byte){
 	//v := url.Values{}
 	//v.Set("huifu", "hello world")
 	//params := ioutil.NopCloser(strings.NewReader(v.Encode())) //把form数据编下码
-
+	if runtime.GOOS == "windows" {
+		content  = ConvertToString(content, "gbk", "utf-8")
+	}
 	params :=  "text=" + content
+	//fmt.Println(params)
+	//return
 
 	//jsonStr = "{'text': "+ content +"}"
 	req, err := http.NewRequest("POST", url, strings.NewReader(params))
@@ -300,4 +306,14 @@ func end() {
 	fmt.Println("------")
 	fmt.Println("程序结束。")
 	fmt.Scanf("%s", &name)
+}
+
+
+func ConvertToString(src string, srcCode string, tagCode string) string {
+	srcCoder := mahonia.NewDecoder(srcCode)
+	srcResult := srcCoder.ConvertString(src)
+	tagCoder := mahonia.NewDecoder(tagCode)
+	_, cdata, _ := tagCoder.Translate([]byte(srcResult), true)
+	result := string(cdata)
+	return result
 }
