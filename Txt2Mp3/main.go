@@ -14,8 +14,8 @@ import (
 	"crypto/md5"
 	"net/http"
 	"strconv"
-	mahonia "github.com/axgle/mahonia"
-	"runtime"
+	"github.com/axgle/mahonia"
+	simplejson "github.com/bitly/go-simplejson"
 )
 
 func main() {
@@ -31,12 +31,11 @@ func main() {
 	const NEW_EXTENSION = "mp3"
 
 	var (
-		err error
-		path string
-		txtList []string
+		err           error
+		path          string
+		txtList       []string
 		getTxtContent []byte
 	)
-
 
 	if !getValid() {
 		fmt.Println("过期了，找隔壁的老王再要一份吧。。")
@@ -54,7 +53,6 @@ func main() {
 		return
 	}
 
-
 	if !mkDir(path + RESOURCE_PATH + checkSystemPath()) {
 		fmt.Printf("无法新建 %s 文件夹，请手动创建", RESOURCE_PATH)
 		fmt.Println(".")
@@ -64,7 +62,7 @@ func main() {
 	var myIP = getIp()
 
 	//检索txt文件夹
-	txtList,err = getFileList(path + SOURCE_PATH + checkSystemPath(), EXTENSION)
+	txtList, err = getFileList(path+SOURCE_PATH+checkSystemPath(), EXTENSION)
 	if len(txtList) == 0 {
 		fmt.Printf("未检索到 %s 文件", EXTENSION)
 		fmt.Println(".")
@@ -72,52 +70,57 @@ func main() {
 	}
 
 	for i := 0; i < len(txtList); i++ {
-		getTxtContent,err = ReadAll(txtList[i]); if err == nil {
-			fmt.Printf("文件  %s 转换启动",filepath.Base(txtList[i]))
+		getTxtContent, err = ReadAll(txtList[i])
+		if err == nil {
+			fmt.Printf("文件  %s 转换启动", filepath.Base(txtList[i]))
 			fmt.Println(" --> ")
 			contents := string(getTxtContent[:])
-			body := sendPost(URL,AUE,APP_ID,API_KEY,myIP,contents)
-			//var data []byte = []byte(contents)
-			writeMp3(path + RESOURCE_PATH + checkSystemPath(),
-				strings.Replace(
-					filepath.Base(txtList[i]),
-					filepath.Ext(filepath.Base(txtList[i])),
-					"."+NEW_EXTENSION,
-					-1),
-				body)
-			fmt.Printf("转换完成")
-			fmt.Println("------")
+			body,res := sendPost(URL, AUE, APP_ID, API_KEY, myIP, contents)
+			if res == "" {
+				//var data []byte = []byte(contents)
+				writeMp3(path+RESOURCE_PATH+checkSystemPath(),
+					strings.Replace(
+						filepath.Base(txtList[i]),
+						filepath.Ext(filepath.Base(txtList[i])),
+						"."+NEW_EXTENSION,
+						-1),
+					body)
+
+				fmt.Printf("转换完成")
+			}else {
+
+				fmt.Printf("转换失败: 原因 %s" , res)
+			}
+			fmt.Println()
 		}
 	}
-	fmt.Println("-- FINISH --")
 
 ERR:
-	// 结束
+// 结束
 	end()
 	return
 }
 
-
-func sendPost(url,aue,appId,appKey,myIP,content string) (body []byte){
+func sendPost(url, aue, appId, appKey, myIP, content string) (body []byte,errMsg string) {
 	var (
-		curTime string
-		param string
+		curTime  string
+		param    string
 		checkSum string
 		//jsonStr string
 	)
-
+	errMsg = ""
 	// 预生成一些校验数据
-	curTime = strconv.FormatInt(time.Now().Unix(),10)
+	curTime = strconv.FormatInt(time.Now().Unix(), 10)
 	param = "{\"aue\":\"" + aue + "\",\"auf\":\"audio/L16;rate=16000\",\"voice_name\":\"xiaoyan\",\"engine_type\":\"intp65\"}"
 	paramBase64 := base64.StdEncoding.EncodeToString([]byte(param))
-	checkSum = fmt.Sprintf("%x", md5.Sum([]byte(appKey + curTime + paramBase64))) //将[]byte转成16进制
+	checkSum = fmt.Sprintf("%x", md5.Sum([]byte(appKey+curTime+paramBase64))) //将[]byte转成16进制
 
 	// 清理无关符号
-	content = strings.Replace(content,"\"","",-1)
-	content = strings.Replace(content,"'","",-1)
-	content = strings.Replace(content,"`","",-1)
-	content = strings.Replace(content,"\n\t","",-1)
-	content = strings.Replace(content,"\n","",-1)
+	content = strings.Replace(content, "\"", "", -1)
+	content = strings.Replace(content, "'", "", -1)
+	content = strings.Replace(content, "`", "", -1)
+	content = strings.Replace(content, "\n\t", "", -1)
+	content = strings.Replace(content, "\n", "", -1)
 	//jsonStr := []byte(`{"text": "`+ content +`"}`)
 	//fmt.Println(jsonStr)
 	// 启动POST请求
@@ -128,12 +131,11 @@ func sendPost(url,aue,appId,appKey,myIP,content string) (body []byte){
 	//v := url.Values{}
 	//v.Set("huifu", "hello world")
 	//params := ioutil.NopCloser(strings.NewReader(v.Encode())) //把form数据编下码
-	if runtime.GOOS == "windows" {
-		content  = ConvertToString(content, "gbk", "utf-8")
-	}
-	params :=  "text=" + content
+	//if runtime.GOOS == "windows" {
+	content = ConvertToString(content, "gbk", "utf-8")
+	//}
+	params := "text=" + content
 	//fmt.Println(params)
-	//return
 
 	//jsonStr = "{'text': "+ content +"}"
 	req, err := http.NewRequest("POST", url, strings.NewReader(params))
@@ -154,16 +156,22 @@ func sendPost(url,aue,appId,appKey,myIP,content string) (body []byte){
 	}
 	defer resp.Body.Close()
 
-	//fmt.Println("-->")
-	//fmt.Println("reqonse Headers:", req.Header)
-	//fmt.Println("reqonse Body:", req.Body)
-	//fmt.Println("response Status:", resp.Status)
-	//fmt.Println("response Headers:", resp.Header)
+	fmt.Println("-->")
+	fmt.Println("reqonse Headers:", req.Header)
+	fmt.Println("reqonse Body:", req.Body)
+	fmt.Println("response Status:", resp.Status)
+	fmt.Println("response Headers:", resp.Header)
 	body, _ = ioutil.ReadAll(resp.Body)
-	//fmt.Println("response Body:", string(body))
+	fmt.Println("response Body:", string(body))
+
+	cnJson, _ := simplejson.NewJson([]byte(body))
+	cnBody, _ := cnJson.Get("code").String()
+	if "0" != cnBody {
+		errMsg, _ = cnJson.Get("desc").String()
+		return
+	}
 	return
 }
-
 
 func getIp() (ip string) {
 	ip = "127.0.0.1"
@@ -192,7 +200,7 @@ func ReadAll(filePth string) ([]byte, error) {
 }
 
 //使用ioutil.WriteFile方式写入文件,是将[]byte内容写入文件,如果content字符串中没有换行符的话，默认就不会有换行符
-func writeMp3(path string, fileName string,data []byte)  (res bool, err error) {
+func writeMp3(path string, fileName string, data []byte) (res bool, err error) {
 	res = true
 	tmpfn := filepath.Join(path, fileName)
 	if err := ioutil.WriteFile(tmpfn, data, 0666); err != nil {
@@ -203,7 +211,7 @@ func writeMp3(path string, fileName string,data []byte)  (res bool, err error) {
 }
 
 //遍历所有文件并取出txt
-func getFileList(filePath string,fileExtension string) (listFile []string, err error) {
+func getFileList(filePath string, fileExtension string) (listFile []string, err error) {
 	//var (
 	//	osType = os.Getenv("GOOS") // 获取系统类型
 	//)
@@ -239,8 +247,6 @@ func getFileList(filePath string,fileExtension string) (listFile []string, err e
 
 	return
 }
-
-
 
 //取当前路径
 func getCurrentPath() (string, error) {
@@ -288,11 +294,11 @@ func mkDir(path string) (res bool) {
 		err = os.Mkdir(path, os.ModePerm)
 		if err != nil {
 			fmt.Println(err)
-			fmt.Printf("创建目录失败",path)
+			fmt.Printf("创建目录失败", path)
 			return
 		}
 		res = true
-		fmt.Printf("创建目录成功",path)
+		fmt.Printf("创建目录成功", path)
 		return
 	}
 	res = true
@@ -303,11 +309,10 @@ func mkDir(path string) (res bool) {
 //结束
 func end() {
 	var name string
-	fmt.Println("------")
+	fmt.Println("--- END ---")
 	fmt.Println("程序结束。")
 	fmt.Scanf("%s", &name)
 }
-
 
 func ConvertToString(src string, srcCode string, tagCode string) string {
 	srcCoder := mahonia.NewDecoder(srcCode)
